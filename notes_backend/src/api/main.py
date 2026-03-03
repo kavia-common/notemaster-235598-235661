@@ -27,14 +27,23 @@ app = FastAPI(
 
 # CORS:
 # - Prefer FRONTEND_ORIGIN for a strict origin in deployments
+# - Fall back to FRONTEND_URL or ALLOWED_ORIGINS used by the platform/manifest
 # - Allow '*' for local/dev if not configured
-frontend_origin = os.getenv("FRONTEND_ORIGIN", "*")
-allow_origins = [frontend_origin] if frontend_origin != "*" else ["*"]
+frontend_origin = os.getenv("FRONTEND_ORIGIN") or os.getenv("FRONTEND_URL") or "*"
+
+allowed_origins_env = os.getenv("ALLOWED_ORIGINS")
+if allowed_origins_env:
+    allow_origins = [o.strip() for o in allowed_origins_env.split(",") if o.strip()]
+else:
+    allow_origins = [frontend_origin] if frontend_origin != "*" else ["*"]
+
+# If we allow '*' we must not set allow_credentials=True (browsers reject it).
+allow_credentials = "*" not in allow_origins
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allow_origins,
-    allow_credentials=True,
+    allow_credentials=allow_credentials,
     allow_methods=["*"],
     allow_headers=["*"],
 )
